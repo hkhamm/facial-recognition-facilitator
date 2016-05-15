@@ -60,14 +60,22 @@ public class RegisterController extends Controller {
 
         for (Picture picture : picturesIn) {
             String base64Image = getBase64String(picture);
-            byte[] imageBytes = decoder.decode(base64Image);
 
-            AddFaceResponse addFaceResponse = fpp.addFace(fppPersonId, imageBytes);
-            addFaceResponses.add(addFaceResponse);
+            try {
+                byte[] imageBytes = decoder.decode(base64Image);
 
-            if (addFaceResponse.getSuccess()) {
-                successCount++;
-            } else {
+                AddFaceResponse addFaceResponse = fpp.addFace(fppPersonId, imageBytes);
+                addFaceResponses.add(addFaceResponse);
+
+                if (addFaceResponse.getSuccess()) {
+                    successCount++;
+                } else {
+                    PictureError pictureError = new PictureError(picture.getPictureId(), 3,
+                            "There is something unknown wrong with the image.");
+                    pictureErrors.add(pictureError);
+                }
+            } catch (Exception e) {
+                successCount -= 1;
                 PictureError pictureError = new PictureError(picture.getPictureId(), 3,
                         "There is something unknown wrong with the image.");
                 pictureErrors.add(pictureError);
