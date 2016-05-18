@@ -97,9 +97,22 @@ public class RegisterController extends Controller {
                 }
             }
         }
+
+        if (successCount < 7) {
+            PictureError pictureError = new PictureError(999, 11,
+                    "Not enough pictures to train the user. Training requires 7 - 8 pictures.");
+            pictureErrors.add(pictureError);
+        }
+
+        if (!success) {
+            PictureError pictureError = new PictureError(999, 12,
+                    "Training the new user failed for an unknown reason.");
+            pictureErrors.add(pictureError);
+        }
+
         registerResponse.setSuccess(isTrained);
 
-        if (pictureErrors.size() > 0 && !isTrained) {
+        if (pictureErrors.size() > 0 || !isTrained) {
             registerResponse.setErrors(pictureErrors);
         } else {
             ArrayList<FacilitatorId> facilitatorIds = new ArrayList<>();
