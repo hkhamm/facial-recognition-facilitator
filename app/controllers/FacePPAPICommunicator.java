@@ -97,6 +97,7 @@ public class FacePPAPICommunicator {
             face_id = response.getJSONArray("face").getJSONObject(0).getString("face_id");
         } catch (JSONException e) {
             e.printStackTrace();
+            Logger.error("No face detected.");
         }
 
         Logger.info(response.toString());
@@ -474,7 +475,15 @@ public class FacePPAPICommunicator {
         }
 
         Logger.info(response.toString());
-        return response.getBoolean("is_same_person");
+
+        boolean isSamePerson = false;
+        try {
+            isSamePerson = response.getBoolean("is_same_person");
+        } catch (JSONException e) {
+            Logger.error("JSONObject[\"is_same_person\"] not found.");
+        }
+
+        return isSamePerson;
     }
 
     Boolean verifyPerson(String personId, String image) {

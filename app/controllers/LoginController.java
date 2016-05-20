@@ -56,10 +56,16 @@ public class LoginController extends Controller {
         String base64Image = getBase64String(picture);
 
         Base64.Decoder decoder = Base64.getDecoder();
-        byte[] imageBytes = decoder.decode(base64Image);
 
-        // TODO instead of just a boolean, if an error occurred return an error object
-        Boolean success = fpp.verifyPerson(facId, imageBytes);
+        boolean success = false;
+        try {
+            byte[] imageBytes = decoder.decode(base64Image);
+            // TODO instead of just a boolean, if an error occurred return an error object
+            success = fpp.verifyPerson(facId, imageBytes);
+        } catch (IllegalArgumentException e) {
+            Logger.error("Unable to decode base 64 encoded image string.");
+        }
+
         loginResponse.setSuccess(success);
 
         ArrayList<LoginError> errors;
