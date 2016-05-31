@@ -37,6 +37,7 @@ public class TrainController extends Controller {
         Logger.info(request.toString());
 
         FPPCommunicator fpp = new FPPCommunicator();
+        MCSCommunicator mcs = new MCSCommunicator();
         Base64.Decoder decoder = Base64.getDecoder();
         ObjectMapper mapper = new ObjectMapper();
         mapper.setPropertyNamingStrategy(new MyPropertyNamingStrategy());
@@ -49,31 +50,39 @@ public class TrainController extends Controller {
         } catch (IOException e) {
             e.printStackTrace();
         }
-
-        ArrayList<Picture> picturesIn = trainRequest.getPictures();
+		
+		ArrayList<Picture> picturesIn = trainRequest.getPictures();
 
         ArrayList<FacilitatorId> facilitatorIds = trainRequest.getFacilitatorIds();
 
         String fppPersonId = "";
+		String mcsPersonId = "";
         if (facilitatorIds != null) {
             for (FacilitatorId facilitatorId : facilitatorIds) {
                 if (Objects.equals(facilitatorId.getFacType(), "fpp")) {
                     fppPersonId = facilitatorId.getFacId();
                 }
+				if (Objects.equals(facilitatorId.getFacType(), "mcs")) {
+                    mcsPersonId = facilitatorId.getFacId();
+                }
             }
         } else {
             fppPersonId = fpp.createPerson();
+			mcsPersonId = mcs.createPerson();
             // TODO if string == null, return success = false
 
             facilitatorIds = new ArrayList<>();
             FacilitatorId facilitatorId = new FacilitatorId("fpp", fppPersonId);
+            facilitatorIds.add(facilitatorId);
+			facilitatorId = new FacilitatorId("mcs", mcsPersonId);
             facilitatorIds.add(facilitatorId);
         }
 
         trainResponse.setFacilitatorIds(facilitatorIds);
 
         ArrayList<PictureError> pictureErrors = new ArrayList<>();
-        ArrayList<AddFaceResponse> addFaceResponses = new ArrayList<>();
+        ArrayList<AddFaceResponse> addFaceResponsesFPP = new ArrayList<>();
+        ArrayList<AddFaceResponse> addFaceResponsesMCS = new ArrayList<>();
         int successCount = 0;
 
         for (Picture picture : picturesIn) {
@@ -82,10 +91,13 @@ public class TrainController extends Controller {
             try {
                 byte[] imageBytes = decoder.decode(base64Image);
 
-                AddFaceResponse addFaceResponse = fpp.addFace(fppPersonId, imageBytes);
-                addFaceResponses.add(addFaceResponse);
+                AddFaceResponse addFaceResponseFPP = fpp.addFace(fppPersonId, imageBytes);
+                addFaceResponsesFPP.add(addFaceResponseFPP);
 
-                if (addFaceResponse.getSuccess()) {
+                AddFaceResponse addFaceResponseMCS = mcs.addFace(mcsPersonId, imageBytes);
+                addFaceResponsesMCS.add(addFaceResponseMCS);
+
+                if (addFaceResponseFPP.getSuccess() && addFaceResponseMCS.getSuccess()) {
                     successCount++;
                 } else {
                     PictureError pictureError = new PictureError(picture.getPictureId(), 3,
@@ -100,13 +112,13 @@ public class TrainController extends Controller {
             }
         }
 
-        Boolean success = fpp.trainPerson(fppPersonId);
-
+        Boolean success = fpp.trainPerson(fppPersonId) && mcs.trainGroup();
+        
         Boolean isTrained = false;
         if (successCount >= 7 && success) {
-            for (int i = addFaceResponses.size() - 1; i >= 0; i--) {
-                if (addFaceResponses.get(i).getSuccess()) {
-                    fpp.removeFace(fppPersonId, addFaceResponses.get(i).getFaceId());
+            for (int i = addFaceResponsesFPP.size() - 1; i >= 0; i--) {
+                if (addFaceResponsesFPP.get(i).getSuccess()) {
+                    fpp.removeFace(fppPersonId, addFaceResponsesFPP.get(i).getFaceId());
                     byte[] imageBytes = decoder.decode(picturesIn.get(i).getBase64());
                     fpp.verifyPerson(fppPersonId, imageBytes);
                     fpp.addFace(fppPersonId, imageBytes);
@@ -115,7 +127,7 @@ public class TrainController extends Controller {
                 }
             }
         }
-
+            
         if (successCount < 7) {
             PictureError pictureError = new PictureError(999, 11,
                     "Not enough pictures to train the user. Training requires 7 - 8 pictures.");
@@ -135,7 +147,7 @@ public class TrainController extends Controller {
         }
 
         JsonNode jsonNode = mapper.valueToTree(trainResponse);
-        Logger.info("\nRegister response");
+        Logger.info("\nTrain response");
         Logger.info(jsonNode.toString());
 
         return jsonNode;

@@ -14,6 +14,16 @@ import org.apache.http.client.utils.URIBuilder;
 import org.apache.http.entity.StringEntity;
 import org.apache.http.impl.client.HttpClients;
 import org.apache.http.util.EntityUtils;
+import models.AddFaceResponse;
+import java.io.ByteArrayInputStream;
+import org.apache.http.entity.ByteArrayEntity;
+import org.apache.http.entity.ContentType;
+
+import com.facepp.http.HttpRequests;
+import com.facepp.http.PostParameters;
+
+import org.json.JSONException;
+import org.json.JSONObject;
 
 import java.net.URI;
 import java.util.Objects;
@@ -22,6 +32,7 @@ public class MCSCommunicator {
 
     private String apiKey;
     private String groupId;
+	private int count = 0;
 
     /**
      * Constructor
@@ -29,8 +40,8 @@ public class MCSCommunicator {
     public MCSCommunicator() {
         apiKey = "f78e82741d04406fa764e084a55ae59a";
         groupId = "default_group";
-
-//        createGroup();
+		
+		createGroup();
 
 //        String personId = createPerson("person_0");
 //
@@ -67,9 +78,9 @@ public class MCSCommunicator {
 
     /**
      * Creates a person group.
-     * @return the response string
+     * @return true on creation
      */
-    protected String createGroup() {
+    protected boolean createGroup() {
         System.out.println("\n[MCS] Creating group");
         HttpClient httpclient = HttpClients.createDefault();
         String result = "";
@@ -102,13 +113,14 @@ public class MCSCommunicator {
                 result = EntityUtils.toString(entity);
             } else {
                 System.out.println("Group created");
+				return true;
             }
         } catch (Exception e) {
             System.out.println(e.getMessage());
         }
 
         System.out.println(result);
-        return result;
+        return false;
     }
 
     /**
@@ -146,7 +158,8 @@ public class MCSCommunicator {
      * @param personName the person's name
      * @return the Face API personId
      */
-    protected String createPerson(String personName) {
+    protected String createPerson() {
+        String personName = "name";
         System.out.println("\n[MCS] Creating person in group");
         HttpClient httpclient = HttpClients.createDefault();
         String personId = "";
@@ -170,7 +183,8 @@ public class MCSCommunicator {
             //   "userData":"User-provided data attached to the person"
             // }
             //
-            String body = String.format("{\"name\":\"%1$s\", \"userData\":\"none\"}", personName);
+            String body = String.format("{\"name\":\"%1$s\", \"userData\":\"none\"}",
+                                        personName);
             StringEntity reqEntity = new StringEntity(body);
             request.setEntity(reqEntity);
 
@@ -231,11 +245,12 @@ public class MCSCommunicator {
      * @param url the image URL
      * @return the response string
      */
-    protected String addFace(String personId, String url) {
+    protected AddFaceResponse addFace(String personId, byte[] data) {
         System.out.println("\n[MCS] Adding face to person");
         HttpClient httpclient = HttpClients.createDefault();
         String result = "";
-
+        String faceId = "";
+            
         try {
             String address = String.format(
                     "https://api.projectoxford.ai/face/v1.0/persongroups/%1$s/persons/%2$s/persistedFaces",
@@ -247,14 +262,14 @@ public class MCSCommunicator {
 
             URI uri = builder.build();
             HttpPost request = new HttpPost(uri);
-            request.setHeader("Content-Type", "application/json");
+            request.setHeader("Content-Type", "application/octet-stream");
             request.setHeader("Ocp-Apim-Subscription-Key", apiKey);
 
             // RegisterRequest body
             //
             // application/json
             // {
-            //   "url":"http://example.com/1.jpg"
+            //   "data":"http://example.com/1.jpg"
             // }
             //
             // or
@@ -264,12 +279,18 @@ public class MCSCommunicator {
             // {
             //   [binary data]
             // }
-            String body = String.format("{\"url\":\"%1$s\"}", url);
-            StringEntity reqEntity = new StringEntity(body);
+            ByteArrayEntity reqEntity = new ByteArrayEntity(data, ContentType.APPLICATION_OCTET_STREAM);
             request.setEntity(reqEntity);
 
             HttpResponse response = httpclient.execute(request);
             HttpEntity entity = response.getEntity();
+            if (entity != null) {
+                ObjectMapper mapper = new ObjectMapper();
+                JsonNode json = mapper.readTree(entity.getContent());
+                System.out.println(json);
+
+                faceId = json.get(0).get("persistedFaceId").asText();
+            }
 
             if (entity != null) {
                 result = EntityUtils.toString(entity);
@@ -278,15 +299,19 @@ public class MCSCommunicator {
             System.out.println(e.getMessage());
         }
 
+        AddFaceResponse addFaceResponse = new AddFaceResponse();
+        addFaceResponse.setSuccess(true);
+        addFaceResponse.setFaceId(faceId);
+
         System.out.println(result);
-        return result;
+        return addFaceResponse;
     }
 
     /**
      * Trains a person group in preparation for identification.
      * @return the response string
      */
-    protected String trainGroup() {
+    protected boolean trainGroup() {
         System.out.println("\n[MCS] Training group");
         HttpClient httpclient = HttpClients.createDefault();
         String result;
@@ -320,9 +345,12 @@ public class MCSCommunicator {
             System.out.println(e.getMessage());
         }
 
+        boolean boolResult = false;
+
         while (true) {
             if (getTrainingStatus()) {
                 result = "{\"result\":\"success\"}";
+                boolResult = true;
                 break;
             } else {
                 try {
@@ -333,7 +361,7 @@ public class MCSCommunicator {
             }
         }
 
-        return result;
+        return boolResult;
     }
 
     /**
@@ -379,7 +407,7 @@ public class MCSCommunicator {
      * @param imageUrl the image URL
      * @return the response string
      */
-    protected String detectFace(String imageUrl) {
+    protected String detectFace(byte[] data) {
         System.out.println("\n[MCS] Detecting face");
         HttpClient httpclient = HttpClients.createDefault();
         String faceId = "";
@@ -389,11 +417,11 @@ public class MCSCommunicator {
 
             builder.setParameter("returnFaceId", "true");
             builder.setParameter("returnFaceLandmarks", "false");
-//            builder.setParameter("returnFaceAttributes", "{string}");
+            //builder.setParameter("returnFaceAttributes", "{string}");
 
             URI uri = builder.build();
             HttpPost request = new HttpPost(uri);
-            request.setHeader("Content-Type", "application/json");
+            request.setHeader("Content-Type", "application/octet-stream");
             request.setHeader("Ocp-Apim-Subscription-Key", apiKey);
 
             // RegisterRequest body
@@ -409,8 +437,7 @@ public class MCSCommunicator {
             //
             // [binary data]
             //
-            String body = String.format("{\"url\":\"%1$s\"}", imageUrl);
-            StringEntity reqEntity = new StringEntity(body);
+            ByteArrayEntity reqEntity = new ByteArrayEntity(data, ContentType.APPLICATION_OCTET_STREAM);
             request.setEntity(reqEntity);
 
             HttpResponse response = httpclient.execute(request);
@@ -435,19 +462,23 @@ public class MCSCommunicator {
      * @param imageUrl the image URL.
      * @return the response string
      */
-    protected String identifyPerson(String imageUrl) {
+    protected AddFaceResponse identifyPerson(String testPersonId, byte[] data) {
+        AddFaceResponse addFaceResponse = new AddFaceResponse();
         HttpClient httpclient = HttpClients.createDefault();
-        String result = "";
+        String personId = "";
+        float confidence = 0.0f;
+		int i = 0;
 
         try {
-            URIBuilder builder = new URIBuilder("https://api.projectoxford.ai/face/v1.0/identify");
+            URIBuilder builder =
+                new URIBuilder("https://api.projectoxford.ai/face/v1.0/identify");
 
             URI uri = builder.build();
             HttpPost request = new HttpPost(uri);
             request.setHeader("Content-Type", "application/json");
             request.setHeader("Ocp-Apim-Subscription-Key", apiKey);
 
-            String faceId = detectFace(imageUrl);
+            String faceId = detectFace(data);
 
             System.out.println("\n[MCS] Identifying face");
 
@@ -465,23 +496,51 @@ public class MCSCommunicator {
             // }
             //
             String body = String.format(
-                    "{\"personGroupId\":\"%1$s\", \"faceIds\":[\"%2$s\"], \"maxNumOfCandidatesReturned\":1}",
+                    "{\"personGroupId\":\"%1$s\", \"faceIds\":[\"%2$s\"], \"maxNumOfCandidatesReturned\":5}",
                     groupId, faceId);
             StringEntity reqEntity = new StringEntity(body);
             request.setEntity(reqEntity);
 
             HttpResponse response = httpclient.execute(request);
             HttpEntity entity = response.getEntity();
-
+			addFaceResponse.setSuccess(false);
             if (entity != null) {
-                result = EntityUtils.toString(entity);
+				ObjectMapper mapper = new ObjectMapper();
+				JsonNode json = mapper.readTree(entity.getContent());
+				System.out.println(json);
+				for(i = 0; i < 5; i++){
+					personId = json.get(0).get("candidates").get(i).get("personId").asText();
+					confidence = (float)json.get(0).get("candidates").get(i).get("confidence").asDouble();
+					if(!(confidence >= 0.8f)){
+						break;
+					}
+					else{
+						if(personId.equals(testPersonId)){
+							addFaceResponse.setSuccess(true);
+							addFaceResponse.setFaceId(personId);
+							return addFaceResponse;
+						}
+					}
+				}
             }
+            
         } catch (Exception e) {
             System.out.println(e.getMessage());
         }
+        return addFaceResponse;
+    }
 
-        System.out.println(result);
-        return result;
+    Boolean verifyPerson(String personId, byte[] image)
+    {
+        AddFaceResponse addFaceResponse = identifyPerson(personId, image);
+
+        if(addFaceResponse.getSuccess())
+        {
+            System.out.println("\n[MCS] Same Person");
+			return addFaceResponse.getSuccess();
+        }
+		System.out.println("\n[MCS] Different Person");
+        return false;
     }
 
     public static void main(String[] args) {

@@ -1,6 +1,6 @@
 name := """Facilitator"""
 
-version := "2.0.0"
+version := "2.0.1"
 
 lazy val root = (project in file(".")).enablePlugins(PlayJava)
 
@@ -15,3 +15,6 @@ libraryDependencies ++= Seq(
   "org.apache.httpcomponents" % "httpmime" % "4.5.2",
   "org.json" % "json" % "20160212"
 )
+
+
+fork in run := true

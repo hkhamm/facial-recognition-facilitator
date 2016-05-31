@@ -38,6 +38,8 @@ public class LoginController extends Controller {
         Logger.info(request.toString());
 
         FPPCommunicator fpp = new FPPCommunicator();
+        MCSCommunicator mcs = new MCSCommunicator();
+
         ObjectMapper mapper = new ObjectMapper();
         mapper.setPropertyNamingStrategy(new MyPropertyNamingStrategy());
         mapper.enable(SerializationFeature.INDENT_OUTPUT);
@@ -51,17 +53,24 @@ public class LoginController extends Controller {
             e.printStackTrace();
         }
 
-        String facId = loginRequest.getFacilitatorIds().get(0).getFacId();
+        String facIdFPP = loginRequest.getFacilitatorIds().get(0).getFacId();
+        String facIdMCS = loginRequest.getFacilitatorIds().get(1).getFacId();
         String picture = loginRequest.getPicture();
         String base64Image = getBase64String(picture);
 
         Base64.Decoder decoder = Base64.getDecoder();
 
         boolean success = false;
+        boolean fppSuccess = false;
+        boolean mcsSuccess = false;
+
         try {
             byte[] imageBytes = decoder.decode(base64Image);
             // TODO instead of just a boolean, if an error occurred return an error object
-            success = fpp.verifyPerson(facId, imageBytes);
+            fppSuccess = fpp.verifyPerson(facIdFPP, imageBytes);
+            mcsSuccess = mcs.verifyPerson(facIdMCS, imageBytes);
+            success = fppSuccess && mcsSuccess;
+             
         } catch (IllegalArgumentException e) {
             Logger.error("Unable to decode base 64 encoded image string.");
         }
