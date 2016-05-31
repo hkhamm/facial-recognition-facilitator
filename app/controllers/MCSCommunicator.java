@@ -18,7 +18,7 @@ import org.apache.http.util.EntityUtils;
 import java.net.URI;
 import java.util.Objects;
 
-public class MCSFaceAPICommunicator {
+public class MCSCommunicator {
 
     private String apiKey;
     private String groupId;
@@ -26,7 +26,7 @@ public class MCSFaceAPICommunicator {
     /**
      * Constructor
      */
-    public MCSFaceAPICommunicator() {
+    public MCSCommunicator() {
         apiKey = "f78e82741d04406fa764e084a55ae59a";
         groupId = "default_group";
 
@@ -485,6 +485,6 @@ public class MCSFaceAPICommunicator {
     }
 
     public static void main(String[] args) {
-        new MCSFaceAPICommunicator();
+        new MCSCommunicator();
     }
 }

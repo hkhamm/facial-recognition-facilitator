@@ -19,7 +19,7 @@ import java.util.Objects;
  * images. These are used to determine if a provided image of a person's face matches any
  * of the people in the group.
  */
-public class FacePPAPICommunicator {
+public class FPPCommunicator {
 
     private HttpRequests httpRequests;
     private String groupName;
@@ -27,7 +27,7 @@ public class FacePPAPICommunicator {
     /**
      * Constructor
      */
-    FacePPAPICommunicator() {
+    FPPCommunicator() {
         String apiKey = "c3de3abff9815f7bdf3b35347a519ccd";
         String apiSecret = "bLdQbvPADlkjoUgXsoqzu4hcFIaEnN9o";
         Boolean useChineseServer = false;

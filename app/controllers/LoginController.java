@@ -37,7 +37,7 @@ public class LoginController extends Controller {
         Logger.info("\n** Login request **");
         Logger.info(request.toString());
 
-        FacePPAPICommunicator fpp = new FacePPAPICommunicator();
+        FPPCommunicator fpp = new FPPCommunicator();
         ObjectMapper mapper = new ObjectMapper();
         mapper.setPropertyNamingStrategy(new MyPropertyNamingStrategy());
         mapper.enable(SerializationFeature.INDENT_OUTPUT);

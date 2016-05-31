@@ -2,15 +2,15 @@ package models;
 
 import java.util.ArrayList;
 
-public class RegisterResponse {
+public class TrainResponse {
 
     private ArrayList<FacilitatorId> facilitatorIds;
     private ArrayList<PictureError> errors;
     private Boolean success;
 
-    public RegisterResponse() {}
+    public TrainResponse() {}
 
-    public RegisterResponse(Boolean success) {
+    public TrainResponse(Boolean success) {
         this.success = success;
     }
 

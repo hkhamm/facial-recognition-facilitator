@@ -15,10 +15,11 @@ import play.mvc.Results;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Base64;
+import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 
-public class RegisterController extends Controller {
+public class TrainController extends Controller {
 
     private String getBase64String(Picture picture) {
         String base64Image = picture.getBase64();
@@ -32,27 +33,44 @@ public class RegisterController extends Controller {
     }
 
     private JsonNode sendRegister(JsonNode request) {
-        Logger.info("\n** Register request **");
+        Logger.info("\n** Train request **");
         Logger.info(request.toString());
 
-        FacePPAPICommunicator fpp = new FacePPAPICommunicator();
+        FPPCommunicator fpp = new FPPCommunicator();
         Base64.Decoder decoder = Base64.getDecoder();
         ObjectMapper mapper = new ObjectMapper();
         mapper.setPropertyNamingStrategy(new MyPropertyNamingStrategy());
         mapper.enable(SerializationFeature.INDENT_OUTPUT);
-        RegisterResponse registerResponse = new RegisterResponse();
+        TrainResponse trainResponse = new TrainResponse();
 
-        RegisterRequest registerRequest = new RegisterRequest();
+        TrainRequest trainRequest = new TrainRequest();
         try {
-            registerRequest = mapper.readValue(request.toString(), RegisterRequest.class);
+            trainRequest = mapper.readValue(request.toString(), TrainRequest.class);
         } catch (IOException e) {
             e.printStackTrace();
         }
 
-        ArrayList<Picture> picturesIn = registerRequest.getPictures();
+        ArrayList<Picture> picturesIn = trainRequest.getPictures();
 
-        String fppPersonId = fpp.createPerson();
-        // TODO if string == null, return success = false
+        ArrayList<FacilitatorId> facilitatorIds = trainRequest.getFacilitatorIds();
+
+        String fppPersonId = "";
+        if (facilitatorIds != null) {
+            for (FacilitatorId facilitatorId : facilitatorIds) {
+                if (Objects.equals(facilitatorId.getFacType(), "fpp")) {
+                    fppPersonId = facilitatorId.getFacId();
+                }
+            }
+        } else {
+            fppPersonId = fpp.createPerson();
+            // TODO if string == null, return success = false
+
+            facilitatorIds = new ArrayList<>();
+            FacilitatorId facilitatorId = new FacilitatorId("fpp", fppPersonId);
+            facilitatorIds.add(facilitatorId);
+        }
+
+        trainResponse.setFacilitatorIds(facilitatorIds);
 
         ArrayList<PictureError> pictureErrors = new ArrayList<>();
         ArrayList<AddFaceResponse> addFaceResponses = new ArrayList<>();
@@ -110,18 +128,13 @@ public class RegisterController extends Controller {
             pictureErrors.add(pictureError);
         }
 
-        registerResponse.setSuccess(isTrained);
+        trainResponse.setSuccess(isTrained);
 
         if (pictureErrors.size() > 0 || !isTrained) {
-            registerResponse.setErrors(pictureErrors);
-        } else {
-            ArrayList<FacilitatorId> facilitatorIds = new ArrayList<>();
-            FacilitatorId facilitatorId = new FacilitatorId("fpp", fppPersonId);
-            facilitatorIds.add(facilitatorId);
-            registerResponse.setFacilitatorIds(facilitatorIds);
+            trainResponse.setErrors(pictureErrors);
         }
 
-        JsonNode jsonNode = mapper.valueToTree(registerResponse);
+        JsonNode jsonNode = mapper.valueToTree(trainResponse);
         Logger.info("\nRegister response");
         Logger.info(jsonNode.toString());
 
@@ -129,7 +142,7 @@ public class RegisterController extends Controller {
     }
 
     @BodyParser.Of(BodyParser.Json.class)
-    public CompletionStage<Result> register() {
+    public CompletionStage<Result> train() {
         JsonNode json = request().body().asJson();
         return CompletableFuture.supplyAsync(() -> sendRegister(json)).thenApply(Results::ok);
     }
