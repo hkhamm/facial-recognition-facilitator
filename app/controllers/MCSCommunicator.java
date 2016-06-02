@@ -32,16 +32,15 @@ public class MCSCommunicator {
 
     private String apiKey;
     private String groupId;
-	private int count = 0;
+    private int count = 0;
 
     /**
      * Constructor
      */
     public MCSCommunicator() {
         apiKey = "f78e82741d04406fa764e084a55ae59a";
-        groupId = "default_group";
-		
-		createGroup();
+        
+        //createGroup();
 
 //        String personId = createPerson("person_0");
 //
@@ -80,7 +79,8 @@ public class MCSCommunicator {
      * Creates a person group.
      * @return true on creation
      */
-    protected boolean createGroup() {
+    protected String createGroup(String group) {
+        groupId = group;
         System.out.println("\n[MCS] Creating group");
         HttpClient httpclient = HttpClients.createDefault();
         String result = "";
@@ -113,14 +113,14 @@ public class MCSCommunicator {
                 result = EntityUtils.toString(entity);
             } else {
                 System.out.println("Group created");
-				return true;
+                
             }
         } catch (Exception e) {
             System.out.println(e.getMessage());
         }
 
         System.out.println(result);
-        return false;
+        return result;
     }
 
     /**
@@ -467,7 +467,7 @@ public class MCSCommunicator {
         HttpClient httpclient = HttpClients.createDefault();
         String personId = "";
         float confidence = 0.0f;
-		int i = 0;
+        int i = 0;
 
         try {
             URIBuilder builder =
@@ -503,25 +503,25 @@ public class MCSCommunicator {
 
             HttpResponse response = httpclient.execute(request);
             HttpEntity entity = response.getEntity();
-			addFaceResponse.setSuccess(false);
+            addFaceResponse.setSuccess(false);
             if (entity != null) {
-				ObjectMapper mapper = new ObjectMapper();
-				JsonNode json = mapper.readTree(entity.getContent());
-				System.out.println(json);
-				for(i = 0; i < 5; i++){
-					personId = json.get(0).get("candidates").get(i).get("personId").asText();
-					confidence = (float)json.get(0).get("candidates").get(i).get("confidence").asDouble();
-					if(!(confidence >= 0.8f)){
-						break;
-					}
-					else{
-						if(personId.equals(testPersonId)){
-							addFaceResponse.setSuccess(true);
-							addFaceResponse.setFaceId(personId);
-							return addFaceResponse;
-						}
-					}
-				}
+                ObjectMapper mapper = new ObjectMapper();
+                JsonNode json = mapper.readTree(entity.getContent());
+                System.out.println(json);
+                for(i = 0; i < 5; i++){
+                    personId = json.get(0).get("candidates").get(i).get("personId").asText();
+                    confidence = (float)json.get(0).get("candidates").get(i).get("confidence").asDouble();
+                    if(!(confidence >= 0.8f)){
+                        break;
+                    }
+                    else{
+                        if(personId.equals(testPersonId)){
+                            addFaceResponse.setSuccess(true);
+                            addFaceResponse.setFaceId(personId);
+                            return addFaceResponse;
+                        }
+                    }
+                }
             }
             
         } catch (Exception e) {
@@ -537,9 +537,9 @@ public class MCSCommunicator {
         if(addFaceResponse.getSuccess())
         {
             System.out.println("\n[MCS] Same Person");
-			return addFaceResponse.getSuccess();
+            return addFaceResponse.getSuccess();
         }
-		System.out.println("\n[MCS] Different Person");
+        System.out.println("\n[MCS] Different Person");
         return false;
     }
 

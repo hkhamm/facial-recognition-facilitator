@@ -18,9 +18,27 @@ import java.util.Base64;
 import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
-
+import java.util.UUID;
+                     
 public class TrainController extends Controller {
-
+        private volatile boolean fppHasCreatedPerson = false;
+        private volatile boolean mcsHasCreatedPerson = false;
+        private volatile boolean fppTrained = false;
+        
+        private volatile boolean fppHasAddedFaces = false;
+        private volatile ArrayList<Picture> picturesIn;
+        private volatile ArrayList<PictureError> pictureErrors;
+        private volatile ArrayList<AddFaceResponse> addFaceResponsesFPP;
+        private volatile ArrayList<AddFaceResponse> addFaceResponsesMCS;
+        private volatile FPPCommunicator fpp;
+        private volatile MCSCommunicator mcs;
+        private volatile boolean mcsTrained = false;
+        private volatile boolean mcsHasAddedFaces = false;
+        private volatile String fppPersonId = "";
+        private volatile String mcsPersonId = "";
+        private volatile String mcsGroupId = "";
+        
+                                                                        
     private String getBase64String(Picture picture) {
         String base64Image = picture.getBase64();
         String[] base64Array = base64Image.split(",");
@@ -50,95 +68,136 @@ public class TrainController extends Controller {
         } catch (IOException e) {
             e.printStackTrace();
         }
-		
-		ArrayList<Picture> picturesIn = trainRequest.getPictures();
+        
+        picturesIn = trainRequest.getPictures();
 
         ArrayList<FacilitatorId> facilitatorIds = trainRequest.getFacilitatorIds();
 
-        String fppPersonId = "";
-		String mcsPersonId = "";
         if (facilitatorIds != null) {
             for (FacilitatorId facilitatorId : facilitatorIds) {
                 if (Objects.equals(facilitatorId.getFacType(), "fpp")) {
                     fppPersonId = facilitatorId.getFacId();
                 }
-				if (Objects.equals(facilitatorId.getFacType(), "mcs")) {
+                if (Objects.equals(facilitatorId.getFacType(), "mcs")) {
                     mcsPersonId = facilitatorId.getFacId();
                 }
+                if (Objects.equals(facilitatorId.getFacType(), "mcsGroup")) {
+                    mcsGroupId = facilitatorId.getFacId();
+                    mcs.createGroup(mcsGroupId);
+                }
+                
             }
         } else {
+            mcsGroupId = UUID.randomUUID().toString();
+            mcs.createGroup(mcsGroupId);
+            Thread fppCreatedPersonThread = new Thread(new Runnable() {
+            public void run() {
             fppPersonId = fpp.createPerson();
-			mcsPersonId = mcs.createPerson();
+            fppHasCreatedPerson = true;
+            }
+            });
+            fppCreatedPersonThread.start();
+        
+            Thread mcsCreatedPersonThread = new Thread(new Runnable() {
+            public void run() {
+            mcsPersonId = mcs.createPerson();
+            mcsHasCreatedPerson = true;
+            }
+            });
+            mcsCreatedPersonThread.start();
+
+            while(!(fppHasCreatedPerson && mcsHasCreatedPerson))
+            {
+            }
+
             // TODO if string == null, return success = false
 
             facilitatorIds = new ArrayList<>();
             FacilitatorId facilitatorId = new FacilitatorId("fpp", fppPersonId);
             facilitatorIds.add(facilitatorId);
-			facilitatorId = new FacilitatorId("mcs", mcsPersonId);
+            facilitatorId = new FacilitatorId("mcs", mcsPersonId);
             facilitatorIds.add(facilitatorId);
+            facilitatorId = new FacilitatorId("mcsGroup", mcsGroupId);
+            facilitatorIds.add(facilitatorId);            
         }
 
         trainResponse.setFacilitatorIds(facilitatorIds);
 
-        ArrayList<PictureError> pictureErrors = new ArrayList<>();
-        ArrayList<AddFaceResponse> addFaceResponsesFPP = new ArrayList<>();
-        ArrayList<AddFaceResponse> addFaceResponsesMCS = new ArrayList<>();
-        int successCount = 0;
-
-        for (Picture picture : picturesIn) {
-            String base64Image = getBase64String(picture);
-
-            try {
-                byte[] imageBytes = decoder.decode(base64Image);
-
-                AddFaceResponse addFaceResponseFPP = fpp.addFace(fppPersonId, imageBytes);
-                addFaceResponsesFPP.add(addFaceResponseFPP);
-
-                AddFaceResponse addFaceResponseMCS = mcs.addFace(mcsPersonId, imageBytes);
-                addFaceResponsesMCS.add(addFaceResponseMCS);
-
-                if (addFaceResponseFPP.getSuccess() && addFaceResponseMCS.getSuccess()) {
-                    successCount++;
-                } else {
-                    PictureError pictureError = new PictureError(picture.getPictureId(), 3,
-                            "There is something unknown wrong with the image.");
-                    pictureErrors.add(pictureError);
-                }
-            } catch (Exception e) {
-                successCount -= 1;
-                PictureError pictureError = new PictureError(picture.getPictureId(), 3,
-                        "There is something unknown wrong with the image.");
-                pictureErrors.add(pictureError);
-            }
-        }
-
-        Boolean success = fpp.trainPerson(fppPersonId) && mcs.trainGroup();
+        pictureErrors = new ArrayList<>();
+        addFaceResponsesFPP = new ArrayList<>();
+        addFaceResponsesMCS = new ArrayList<>();
         
-        Boolean isTrained = false;
-        if (successCount >= 7 && success) {
-            for (int i = addFaceResponsesFPP.size() - 1; i >= 0; i--) {
-                if (addFaceResponsesFPP.get(i).getSuccess()) {
-                    fpp.removeFace(fppPersonId, addFaceResponsesFPP.get(i).getFaceId());
-                    byte[] imageBytes = decoder.decode(picturesIn.get(i).getBase64());
-                    fpp.verifyPerson(fppPersonId, imageBytes);
-                    fpp.addFace(fppPersonId, imageBytes);
-                    isTrained = true;
-                    break;
+        Thread fppAddedFacesThread = new Thread(new Runnable() {
+            public void run() {
+                for (Picture picture : picturesIn) {
+                    String base64Image = getBase64String(picture);
+
+                    try {
+                        byte[] imageBytes = decoder.decode(base64Image);
+
+                        AddFaceResponse addFaceResponseFPP = fpp.addFace(fppPersonId, imageBytes);
+                        addFaceResponsesFPP.add(addFaceResponseFPP);
+
+                        if (addFaceResponseFPP.getSuccess()) {
+                        } else {
+                            PictureError pictureError = new PictureError(picture.getPictureId(), 3,
+                                                                         "There is something unknown wrong with the image.");
+                            pictureErrors.add(pictureError);
+                        }
+                    } catch (Exception e) {
+                        PictureError pictureError = new PictureError(picture.getPictureId(), 3,
+                                                                     "There is something unknown wrong with the image.");
+                        pictureErrors.add(pictureError);
+                    }
                 }
+                fppTrained = fpp.trainPerson(fppPersonId);
+                fppHasAddedFaces = true;
             }
+            });
+        fppAddedFacesThread.start();
+
+        Thread mcsAddedFacesThread = new Thread(new Runnable() {
+            public void run() {
+                for (Picture picture : picturesIn) {
+                    String base64Image = getBase64String(picture);
+
+                    try {
+                        byte[] imageBytes = decoder.decode(base64Image);
+
+                        AddFaceResponse addFaceResponseMCS = mcs.addFace(mcsPersonId, imageBytes);
+                        addFaceResponsesMCS.add(addFaceResponseMCS);
+
+                        if (addFaceResponseMCS.getSuccess()) {
+                        } else {
+                            PictureError pictureError = new PictureError(picture.getPictureId(), 3,
+                                                                         "There is something unknown wrong with the image.");
+                            pictureErrors.add(pictureError);
+                        }
+                    } catch (Exception e) {
+                        PictureError pictureError = new PictureError(picture.getPictureId(), 3,
+                                                                     "There is something unknown wrong with the image.");
+                        pictureErrors.add(pictureError);
+                    }
+                }
+                mcsTrained = mcs.trainGroup();
+                mcsHasAddedFaces = true;
+            }
+            });
+        mcsAddedFacesThread.start();
+        
+        while(!(fppHasAddedFaces && mcsHasAddedFaces))
+        {
         }
-            
-        if (successCount < 7) {
-            PictureError pictureError = new PictureError(999, 11,
-                    "Not enough pictures to train the user. Training requires 7 - 8 pictures.");
-            pictureErrors.add(pictureError);
-        }
+
+        Boolean success = fppTrained && mcsTrained;
 
         if (!success) {
             PictureError pictureError = new PictureError(999, 12,
                     "Training the new user failed for an unknown reason.");
             pictureErrors.add(pictureError);
         }
+
+        boolean isTrained = true;
 
         trainResponse.setSuccess(isTrained);
 

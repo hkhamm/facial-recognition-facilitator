@@ -23,6 +23,15 @@ import java.util.concurrent.CompletionStage;
 
 public class LoginController extends Controller {
 
+    private volatile boolean success = false;
+    private volatile boolean fppSuccess = false;
+    private volatile boolean mcsSuccess = false;
+    private volatile boolean fppHasVerified = false;
+    private volatile boolean mcsHasVerified = false;
+
+    private volatile FPPCommunicator fpp;
+    private volatile MCSCommunicator mcs;
+
     private String getBase64String(String picture) {
         String[] base64Array = picture.split(",");
 
@@ -37,8 +46,8 @@ public class LoginController extends Controller {
         Logger.info("\n** Login request **");
         Logger.info(request.toString());
 
-        FPPCommunicator fpp = new FPPCommunicator();
-        MCSCommunicator mcs = new MCSCommunicator();
+        fpp = new FPPCommunicator();
+        mcs = new MCSCommunicator();
 
         ObjectMapper mapper = new ObjectMapper();
         mapper.setPropertyNamingStrategy(new MyPropertyNamingStrategy());
@@ -55,20 +64,38 @@ public class LoginController extends Controller {
 
         String facIdFPP = loginRequest.getFacilitatorIds().get(0).getFacId();
         String facIdMCS = loginRequest.getFacilitatorIds().get(1).getFacId();
+        String groupIdMCS = loginRequest.getFacilitatorIds().get(2).getFacId();
         String picture = loginRequest.getPicture();
         String base64Image = getBase64String(picture);
 
         Base64.Decoder decoder = Base64.getDecoder();
 
-        boolean success = false;
-        boolean fppSuccess = false;
-        boolean mcsSuccess = false;
+        mcs.createGroup(groupIdMCS);
 
         try {
             byte[] imageBytes = decoder.decode(base64Image);
             // TODO instead of just a boolean, if an error occurred return an error object
+        
+            Thread fppVerifyThread = new Thread(new Runnable() {
+            public void run() {
             fppSuccess = fpp.verifyPerson(facIdFPP, imageBytes);
+            fppHasVerified = true;
+            }
+            });
+            fppVerifyThread.start();
+        
+            Thread mcsVerifyThread = new Thread(new Runnable() {
+            public void run() {
             mcsSuccess = mcs.verifyPerson(facIdMCS, imageBytes);
+            mcsHasVerified = true;
+            }
+            });
+            mcsVerifyThread.start();
+
+            while(!(fppHasVerified && mcsHasVerified))
+            {
+            }
+
             success = fppSuccess && mcsSuccess;
              
         } catch (IllegalArgumentException e) {
