@@ -23,12 +23,18 @@ $ activator run
 
 ### Register
 
-Creates and trains new users with the received pictures. Send requests to `http://address:9000/register` with 7 to 8 picture objects. In the response, either facilitatorIds or errors may be null depending on the result.
+Creates and trains new users with the received pictures. The facilitatorIds array may be null. Send requests to `http://address:9000/train` with 7 to 8 picture objects. In the response, either facilitatorIds or errors may be null depending on the result.
 
 Request
 
 ```
 {
+  "facilitatorIds" : [ 
+    {
+      "facType" : string,
+      "facId" : string
+    } 
+  ],
   "pictures" : [ 
     {
       "pictureId : int,
@@ -60,7 +66,7 @@ Response
 
 ### Login
 
-Verifies if the given picture is of a previously registered user. Send requests to `http://address:9000/register` with the facilitatorIds array returned from a successful register request. In the response, errors may be null if success is true.
+Verifies if the given picture is of a previously registered user. Send requests to `http://address:9000/login` with the facilitatorIds array returned from a successful register request. In the response, errors may be null if success is true.
 
 Request
 

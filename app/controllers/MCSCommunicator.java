@@ -39,40 +39,6 @@ public class MCSCommunicator {
      */
     public MCSCommunicator() {
         apiKey = "f78e82741d04406fa764e084a55ae59a";
-        
-        //createGroup();
-
-//        String personId = createPerson("person_0");
-//
-//        addFace(personId,
-//                "https://www.whitehouse.gov/sites/whitehouse.gov/files/images/first-family/44_barack_obama%5B1%5D.jpg");
-//
-//        addFace(personId,
-//                "http://www.worldnewspolitics.com/wp-content/uploads/2016/02/140718-barack-obama-2115_86aea53294a878936633ec10495866b6.jpg");
-//
-//        addFace(personId,
-//                "http://i2.cdn.turner.com/cnnnext/dam/assets/150213095929-27-obama-0213-super-169.jpg");
-//
-//        addFace(personId,
-//                "http://a.abcnews.go.com/images/US/AP_obama8_ml_150618_16x9_992.jpg");
-//
-//        addFace(personId,
-//                "http://www.dailystormer.com/wp-content/uploads/2015/06/2014-10-12-obama-618x402.jpg");
-//
-//        addFace(personId,
-//                "http://media.vocativ.com/photos/2015/10/RTS2O4I-22195838534.jpg");
-//
-//        addFace(personId,
-//                "https://upload.wikimedia.org/wikipedia/commons/e/e9/Official_portrait_of_Barack_Obama.jpg");
-//
-//        addFace(personId,
-//                "http://cbsnews2.cbsistatic.com/hub/i/r/2015/10/09/f27caaea-86d1-41e2-bec2-97e89e5dba03/thumbnail/770x430/0a4b24d154ee526bb6811f1888e16600/presidentobamamain.jpg");
-//
-//        trainGroup();
-//
-//        identifyPerson("http://i.huffpost.com/gen/2518262/images/n-OBAMA-628x314.jpg");
-//
-//        removePerson(personId);
     }
 
     /**
@@ -155,7 +121,6 @@ public class MCSCommunicator {
 
     /**
      * Creates a person with the given name.
-     * @param personName the person's name
      * @return the Face API personId
      */
     protected String createPerson() {
@@ -242,7 +207,7 @@ public class MCSCommunicator {
     /**
      * Adds a face to a person using the personId and an image URL.
      * @param personId the Face API personId
-     * @param url the image URL
+     * @param data the image data
      * @return the response string
      */
     protected AddFaceResponse addFace(String personId, byte[] data) {
@@ -403,8 +368,8 @@ public class MCSCommunicator {
     }
 
     /**
-     * Attempts to detect a face in the image at the given URL.
-     * @param imageUrl the image URL
+     * Attempts to detect a face in the image at the given data.
+     * @param data the image data
      * @return the response string
      */
     protected String detectFace(byte[] data) {
@@ -458,8 +423,8 @@ public class MCSCommunicator {
     }
 
     /**
-     * Attempts to identify the person in the given image URL.
-     * @param imageUrl the image URL.
+     * Attempts to identify the person in the given image data.
+     * @param data the image data.
      * @return the response string
      */
     protected AddFaceResponse identifyPerson(String testPersonId, byte[] data) {
@@ -544,6 +509,40 @@ public class MCSCommunicator {
     }
 
     public static void main(String[] args) {
-        new MCSCommunicator();
+        MCSCommunicator mcs = new MCSCommunicator();
+
+//        mcs.createGroup("default_group");
+
+        String personId = mcs.createPerson();
+
+//        mcs.addFace(personId,
+//                "https://www.whitehouse.gov/sites/whitehouse.gov/files/images/first-family/44_barack_obama%5B1%5D.jpg");
+//
+//        mcs.addFace(personId,
+//                "http://www.worldnewspolitics.com/wp-content/uploads/2016/02/140718-barack-obama-2115_86aea53294a878936633ec10495866b6.jpg");
+//
+//        mcs.addFace(personId,
+//                "http://i2.cdn.turner.com/cnnnext/dam/assets/150213095929-27-obama-0213-super-169.jpg");
+//
+//        mcs.addFace(personId,
+//                "http://a.abcnews.go.com/images/US/AP_obama8_ml_150618_16x9_992.jpg");
+//
+//        mcs.addFace(personId,
+//                "http://www.dailystormer.com/wp-content/uploads/2015/06/2014-10-12-obama-618x402.jpg");
+//
+//        mcs.addFace(personId,
+//                "http://media.vocativ.com/photos/2015/10/RTS2O4I-22195838534.jpg");
+//
+//        mcs.addFace(personId,
+//                "https://upload.wikimedia.org/wikipedia/commons/e/e9/Official_portrait_of_Barack_Obama.jpg");
+//
+//        mcs.addFace(personId,
+//                "http://cbsnews2.cbsistatic.com/hub/i/r/2015/10/09/f27caaea-86d1-41e2-bec2-97e89e5dba03/thumbnail/770x430/0a4b24d154ee526bb6811f1888e16600/presidentobamamain.jpg");
+//
+//        mcs.trainGroup();
+//
+//        mcs.identifyPerson("http://i.huffpost.com/gen/2518262/images/n-OBAMA-628x314.jpg");
+
+        mcs.removePerson(personId);
     }
 }

@@ -21,23 +21,22 @@ import java.util.concurrent.CompletionStage;
 import java.util.UUID;
                      
 public class TrainController extends Controller {
-        private volatile boolean fppHasCreatedPerson = false;
-        private volatile boolean mcsHasCreatedPerson = false;
-        private volatile boolean fppTrained = false;
-        
-        private volatile boolean fppHasAddedFaces = false;
-        private volatile ArrayList<Picture> picturesIn;
-        private volatile ArrayList<PictureError> pictureErrors;
-        private volatile ArrayList<AddFaceResponse> addFaceResponsesFPP;
-        private volatile ArrayList<AddFaceResponse> addFaceResponsesMCS;
-        private volatile FPPCommunicator fpp;
-        private volatile MCSCommunicator mcs;
-        private volatile boolean mcsTrained = false;
-        private volatile boolean mcsHasAddedFaces = false;
-        private volatile String fppPersonId = "";
-        private volatile String mcsPersonId = "";
-        private volatile String mcsGroupId = "";
-        
+    private volatile boolean fppHasCreatedPerson = false;
+    private volatile boolean mcsHasCreatedPerson = false;
+    private volatile boolean fppTrained = false;
+
+    private volatile boolean fppHasAddedFaces = false;
+    private volatile ArrayList<Picture> picturesIn;
+    private volatile ArrayList<PictureError> pictureErrors;
+    private volatile ArrayList<AddFaceResponse> addFaceResponsesFPP;
+    private volatile ArrayList<AddFaceResponse> addFaceResponsesMCS;
+    private volatile FPPCommunicator fpp;
+    private volatile MCSCommunicator mcs;
+    private volatile boolean mcsTrained = false;
+    private volatile boolean mcsHasAddedFaces = false;
+    private volatile String fppPersonId = "";
+    private volatile String mcsPersonId = "";
+    private volatile String mcsGroupId = "";
                                                                         
     private String getBase64String(Picture picture) {
         String base64Image = picture.getBase64();
@@ -50,6 +49,12 @@ public class TrainController extends Controller {
         return base64Image;
     }
 
+    /**
+     * Creates persons, adds faces from the submitted images to the persons, and prepares the persons for verify
+     * person requests to the Face++ API and identify person in group requests to Microsoft Cognitive Services Face API.
+     * @param request is the JsonNode request object
+     * @return a JsonNode version of TrainResponse
+     */
     private JsonNode sendRegister(JsonNode request) {
         Logger.info("\n** Train request **");
         Logger.info(request.toString());
@@ -91,23 +96,22 @@ public class TrainController extends Controller {
             mcsGroupId = UUID.randomUUID().toString();
             mcs.createGroup(mcsGroupId);
             Thread fppCreatedPersonThread = new Thread(new Runnable() {
-            public void run() {
-            fppPersonId = fpp.createPerson();
-            fppHasCreatedPerson = true;
-            }
+                public void run() {
+                    fppPersonId = fpp.createPerson();
+                    fppHasCreatedPerson = true;
+                }
             });
             fppCreatedPersonThread.start();
         
             Thread mcsCreatedPersonThread = new Thread(new Runnable() {
-            public void run() {
-            mcsPersonId = mcs.createPerson();
-            mcsHasCreatedPerson = true;
-            }
+                public void run() {
+                    mcsPersonId = mcs.createPerson();
+                    mcsHasCreatedPerson = true;
+                }
             });
             mcsCreatedPersonThread.start();
 
-            while(!(fppHasCreatedPerson && mcsHasCreatedPerson))
-            {
+            while (!(fppHasCreatedPerson && mcsHasCreatedPerson)) {
             }
 
             // TODO if string == null, return success = false
@@ -128,65 +132,64 @@ public class TrainController extends Controller {
         addFaceResponsesMCS = new ArrayList<>();
         
         Thread fppAddedFacesThread = new Thread(new Runnable() {
-            public void run() {
-                for (Picture picture : picturesIn) {
-                    String base64Image = getBase64String(picture);
+                public void run() {
+                    for (Picture picture : picturesIn) {
+                        String base64Image = getBase64String(picture);
 
-                    try {
-                        byte[] imageBytes = decoder.decode(base64Image);
+                        try {
+                            byte[] imageBytes = decoder.decode(base64Image);
 
-                        AddFaceResponse addFaceResponseFPP = fpp.addFace(fppPersonId, imageBytes);
-                        addFaceResponsesFPP.add(addFaceResponseFPP);
+                            AddFaceResponse addFaceResponseFPP = fpp.addFace(fppPersonId, imageBytes);
+                            addFaceResponsesFPP.add(addFaceResponseFPP);
 
-                        if (addFaceResponseFPP.getSuccess()) {
-                        } else {
+                            if (addFaceResponseFPP.getSuccess()) {
+                            } else {
+                                PictureError pictureError = new PictureError(picture.getPictureId(), 3,
+                                                                             "There is something unknown wrong with the image.");
+                                pictureErrors.add(pictureError);
+                            }
+                        } catch (Exception e) {
                             PictureError pictureError = new PictureError(picture.getPictureId(), 3,
                                                                          "There is something unknown wrong with the image.");
                             pictureErrors.add(pictureError);
                         }
-                    } catch (Exception e) {
-                        PictureError pictureError = new PictureError(picture.getPictureId(), 3,
-                                                                     "There is something unknown wrong with the image.");
-                        pictureErrors.add(pictureError);
                     }
+                    fppTrained = fpp.trainPerson(fppPersonId);
+                    fppHasAddedFaces = true;
                 }
-                fppTrained = fpp.trainPerson(fppPersonId);
-                fppHasAddedFaces = true;
-            }
             });
         fppAddedFacesThread.start();
 
         Thread mcsAddedFacesThread = new Thread(new Runnable() {
-            public void run() {
-                for (Picture picture : picturesIn) {
-                    String base64Image = getBase64String(picture);
+                public void run() {
+                    for (Picture picture : picturesIn) {
+                        String base64Image = getBase64String(picture);
 
-                    try {
-                        byte[] imageBytes = decoder.decode(base64Image);
+                        try {
+                            byte[] imageBytes = decoder.decode(base64Image);
 
-                        AddFaceResponse addFaceResponseMCS = mcs.addFace(mcsPersonId, imageBytes);
-                        addFaceResponsesMCS.add(addFaceResponseMCS);
+                            AddFaceResponse addFaceResponseMCS = mcs.addFace(mcsPersonId, imageBytes);
+                            addFaceResponsesMCS.add(addFaceResponseMCS);
 
-                        if (addFaceResponseMCS.getSuccess()) {
-                        } else {
+                            if (addFaceResponseMCS.getSuccess()) {
+                            } else {
+                                PictureError pictureError = new PictureError(picture.getPictureId(), 3,
+                                                                             "There is something unknown wrong with the image.");
+                                pictureErrors.add(pictureError);
+                            }
+                        } catch (Exception e) {
                             PictureError pictureError = new PictureError(picture.getPictureId(), 3,
                                                                          "There is something unknown wrong with the image.");
                             pictureErrors.add(pictureError);
                         }
-                    } catch (Exception e) {
-                        PictureError pictureError = new PictureError(picture.getPictureId(), 3,
-                                                                     "There is something unknown wrong with the image.");
-                        pictureErrors.add(pictureError);
                     }
+                    mcsTrained = mcs.trainGroup();
+                    mcsHasAddedFaces = true;
                 }
-                mcsTrained = mcs.trainGroup();
-                mcsHasAddedFaces = true;
-            }
             });
         mcsAddedFacesThread.start();
         
-        while(!(fppHasAddedFaces && mcsHasAddedFaces))
-        {
+        while (!(fppHasAddedFaces && mcsHasAddedFaces)) {
         }
 
         Boolean success = fppTrained && mcsTrained;
@@ -212,6 +215,10 @@ public class TrainController extends Controller {
         return jsonNode;
     }
 
+    /**
+     * Makes a train request to the facial recognition services.
+     * @return a JsonNode version of TrainResponse
+     */
     @BodyParser.Of(BodyParser.Json.class)
     public CompletionStage<Result> train() {
         JsonNode json = request().body().asJson();

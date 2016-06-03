@@ -10,7 +10,7 @@ import java.lang.reflect.Field;
 import java.util.List;
 
 /**
- * Created by Keith on 4/25/16.
+ * A custom property naming strategy for the Jackson ObjectMapper.
  */
 public class MyPropertyNamingStrategy extends PropertyNamingStrategy {
     @Override
