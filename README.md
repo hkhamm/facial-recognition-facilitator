@@ -21,9 +21,9 @@ $ activator run
 
 ## Using the app
 
-### Register
+### Train
 
-Creates and trains new users with the received pictures. The facilitatorIds array may be null. Send requests to `http://address:9000/train` with 7 to 8 picture objects. In the response, either facilitatorIds or errors may be null depending on the result.
+Creates and trains new users or does additional training to previously trained users with the received pictures. The facilitatorIds array will be null only for new user creation and training. Send requests to `http://address:9000/train` with 7 to 8 picture objects. In the response, either facilitatorIds or errors may be null depending on the result.
 
 Request
 
