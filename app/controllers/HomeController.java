@@ -9,7 +9,8 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 
 /**
- * This controller contains an action to handle HTTP requests to the application's home page.
+ * This controller contains an action to handle HTTP requests
+ * to the application's home page.
  */
 public class HomeController extends Controller {
 

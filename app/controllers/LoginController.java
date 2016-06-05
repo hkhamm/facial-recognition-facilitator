@@ -32,12 +32,6 @@ public class LoginController extends Controller {
     private volatile FPPCommunicator fpp;
     private volatile MCSCommunicator mcs;
 
-
-    /**
-     * Gets only the base64 string from a base64 string with header.
-     * @param picture the original base64 string
-     * @return the base64 string stripped of a header.
-     */
     private String getBase64String(String picture) {
         String[] base64Array = picture.split(",");
 
@@ -48,12 +42,6 @@ public class LoginController extends Controller {
         return picture;
     }
 
-    /**
-     * Makes a verify person request to the Face++ API and an identify person request to Microsoft Cognitive
-     * Services Face API.
-     * @param request is the JsonNode request object
-     * @return a JsonNode version of LoginResponse
-     */
     private JsonNode sendLogin(JsonNode request) {
         Logger.info("\n** Login request **");
         Logger.info(request.toString());
@@ -89,22 +77,23 @@ public class LoginController extends Controller {
             // TODO instead of just a boolean, if an error occurred return an error object
         
             Thread fppVerifyThread = new Thread(new Runnable() {
-                public void run() {
-                    fppSuccess = fpp.verifyPerson(facIdFPP, imageBytes);
-                    fppHasVerified = true;
-                }
+            public void run() {
+            fppSuccess = fpp.verifyPerson(facIdFPP, imageBytes);
+            fppHasVerified = true;
+            }
             });
             fppVerifyThread.start();
         
             Thread mcsVerifyThread = new Thread(new Runnable() {
-                public void run() {
-                    mcsSuccess = mcs.verifyPerson(facIdMCS, imageBytes);
-                    mcsHasVerified = true;
-                }
+            public void run() {
+            mcsSuccess = mcs.verifyPerson(facIdMCS, imageBytes);
+            mcsHasVerified = true;
+            }
             });
             mcsVerifyThread.start();
 
-            while (!(fppHasVerified && mcsHasVerified)) {
+            while(!(fppHasVerified && mcsHasVerified))
+            {
             }
 
             success = fppSuccess && mcsSuccess;
@@ -130,10 +119,6 @@ public class LoginController extends Controller {
         return jsonNode;
     }
 
-    /**
-     * Makes a login request to the facial recognition services.
-     * @return a JsonNode version of LoginResponse
-     */
     @BodyParser.Of(BodyParser.Json.class)
     public CompletionStage<Result> login() {
         JsonNode json = request().body().asJson();
